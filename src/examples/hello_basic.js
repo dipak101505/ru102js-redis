@@ -8,7 +8,7 @@ const client = redis.createClient({
 });
 
 // Run a Redis command, receive response in callback.
-client.set('hello', 'world', (err, reply) => {
+client.set('hello', 'dipak', (err, reply) => {
   console.log(reply); // OK
 
   // Run a second Redis command now we know that the

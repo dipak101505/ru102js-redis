@@ -1,3 +1,4 @@
+const { log } = require('winston');
 const redis = require('./redis_client');
 const keyGenerator = require('./redis_key_generator');
 
@@ -69,7 +70,6 @@ const insert = async (site) => {
 
   await client.hmsetAsync(siteHashKey, flatten(site));
   await client.saddAsync(keyGenerator.getSiteIDsKey(), siteHashKey);
-
   return siteHashKey;
 };
 
@@ -85,7 +85,7 @@ const findById = async (id) => {
 
   const siteHash = await client.hgetallAsync(siteKey);
 
-  return (siteHash === null ? siteHash : remap(siteHash));
+  return siteHash === null ? siteHash : remap(siteHash);
 };
 
 /* eslint-disable arrow-body-style */
@@ -95,9 +95,16 @@ const findById = async (id) => {
  * @returns {Promise} - a Promise, resolving to an array of site objects.
  */
 const findAll = async () => {
-  // START CHALLENGE #1
-  return [];
-  // END CHALLENGE #1
+  const arr = [];
+  const client = redis.getClient();
+  const siteIds = await client.smembersAsync(keyGenerator.getSiteIDsKey());
+  for (const id of siteIds) {
+    const siteHash = await client.hgetallAsync(id);
+    site = (await siteHash) === null ? siteHash : remap(siteHash);
+    arr.push(site);
+  }
+
+  return arr;
 };
 /* eslint-enable */
 
