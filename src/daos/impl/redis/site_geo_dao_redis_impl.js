@@ -82,7 +82,7 @@ const insert = async (site) => {
     keyGenerator.getSiteGeoKey(),
     site.coordinate.lng,
     site.coordinate.lat,
-    site.id,
+    site.id
   );
 
   return siteHashKey;
@@ -100,7 +100,7 @@ const findById = async (id) => {
 
   const siteHash = await client.hgetallAsync(siteKey);
 
-  return (siteHash === null ? siteHash : remap(siteHash));
+  return siteHash === null ? siteHash : remap(siteHash);
 };
 
 /**
@@ -148,7 +148,7 @@ const findByGeo = async (lat, lng, radius, radiusUnit) => {
     lng,
     lat,
     radius,
-    radiusUnit.toLowerCase(),
+    radiusUnit.toLowerCase()
   );
 
   const sites = [];
@@ -180,7 +180,6 @@ const findByGeo = async (lat, lng, radius, radiusUnit) => {
 const findByGeoWithExcessCapacity = async (lat, lng, radius, radiusUnit) => {
   /* eslint-disable no-unreachable */
   // Challenge #5, remove the next line...
-  return [];
 
   const client = redis.getClient();
 
@@ -197,20 +196,27 @@ const findByGeoWithExcessCapacity = async (lat, lng, radius, radiusUnit) => {
     radius,
     radiusUnit.toLowerCase(),
     'STORE',
-    sitesInRadiusSortedSetKey,
+    sitesInRadiusSortedSetKey
   );
 
-  // Create a key for a temporary sorted set containing sites that fell
-  // within the radius and their current capacities.
   const sitesInRadiusCapacitySortedSetKey = keyGenerator.getTemporaryKey();
-
+  const intersection = keyGenerator.getTemporaryKey();
   // START Challenge #5
-  // END Challenge #5
+  setOperationsPipeline.zinterstore(
+    sitesInRadiusCapacitySortedSetKey,
+    2,
+    sitesInRadiusSortedSetKey,
+    keyGenerator.getCapacityRankingKey(),
+    'WEIGHTS',
+    0,
+    1
+  ); // END Challenge #5
 
   // Expire the temporary sorted sets after 30 seconds, so that we
   // don't leave old keys on the server that we no longer need.
   setOperationsPipeline.expire(sitesInRadiusSortedSetKey, 30);
   setOperationsPipeline.expire(sitesInRadiusCapacitySortedSetKey, 30);
+  setOperationsPipeline.expire(intersection, 30);
 
   // Execute the set operations commands, we do not need to
   // use the responses.
@@ -221,7 +227,7 @@ const findByGeoWithExcessCapacity = async (lat, lng, radius, radiusUnit) => {
   const siteIds = await client.zrangebyscoreAsync(
     sitesInRadiusCapacitySortedSetKey,
     capacityThreshold,
-    '+inf',
+    '+inf'
   );
 
   // Populate array with site details, use pipeline for efficiency.
